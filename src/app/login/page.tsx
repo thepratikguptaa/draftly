@@ -1,11 +1,60 @@
 "use client";
 
+import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/footer";
-import { Sparkles, Wand2, Zap, PenLine } from "lucide-react";
+import { toast } from "sonner";
+import { Sparkles, Wand2, Zap, PenLine, Loader2, Mail, Lock, User } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) { toast.error("Fill in all fields"); return; }
+
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        if (!name) { toast.error("Name is required"); setLoading(false); return; }
+        if (password.length < 6) { toast.error("Password must be at least 6 characters"); setLoading(false); return; }
+
+        const res = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { toast.error(data.error); setLoading(false); return; }
+
+        toast.success("Account created! Signing in...");
+      }
+
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Invalid email or password");
+      } else {
+        router.push("/");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden noise-bg">
       {/* Animated orbs */}
@@ -30,7 +79,7 @@ export default function LoginPage() {
         {/* Glass card */}
         <div className="rounded-3xl border border-white/[0.08] bg-card/50 backdrop-blur-2xl p-8 shadow-2xl shadow-black/20">
           {/* Feature pills */}
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <div className="flex flex-wrap justify-center gap-2 mb-7">
             {[
               { icon: Wand2, label: "AI Refactor" },
               { icon: PenLine, label: "Microblog" },
@@ -45,8 +94,9 @@ export default function LoginPage() {
             ))}
           </div>
 
+          {/* Google button */}
           <Button
-            className="w-full h-12 text-sm font-semibold gap-3 rounded-2xl bg-white text-black hover:bg-white/90 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full h-11 text-sm font-semibold gap-3 rounded-2xl bg-white text-black hover:bg-white/90 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
             onClick={() => signIn("google", { callbackUrl: "/" })}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -58,8 +108,88 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="text-center text-[11px] text-muted-foreground/60 mt-6">
-            Start writing AI-enhanced posts in seconds
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-[11px] text-muted-foreground/40 uppercase tracking-wider font-medium">or</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+
+          {/* Email/Password form */}
+          <form onSubmit={handleCredentials} className="space-y-3">
+            {mode === "signup" && (
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm outline-none focus:border-primary/30 placeholder:text-muted-foreground/30 transition-colors"
+                />
+              </div>
+            )}
+
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm outline-none focus:border-primary/30 placeholder:text-muted-foreground/30 transition-colors"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm outline-none focus:border-primary/30 placeholder:text-muted-foreground/30 transition-colors"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 text-sm font-semibold rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-600/20 border-0 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : mode === "login" ? (
+                "Sign In"
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+          </form>
+
+          {/* Toggle mode */}
+          <p className="text-center text-xs text-muted-foreground/50 mt-5">
+            {mode === "login" ? (
+              <>
+                Don&apos;t have an account?{" "}
+                <button
+                  onClick={() => setMode("signup")}
+                  className="text-primary/70 hover:text-primary font-medium transition-colors"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  onClick={() => setMode("login")}
+                  className="text-primary/70 hover:text-primary font-medium transition-colors"
+                >
+                  Sign in
+                </button>
+              </>
+            )}
           </p>
         </div>
 

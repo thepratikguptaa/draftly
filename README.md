@@ -80,6 +80,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | Image Upload | No | Yes (2MB max) |
 | Styles | Basic | Basic, Professional, Casual, Funny, Concise |
 
+## Note
+
+Razorpay is currently configured in **test mode** only. No real payments are processed. Use Razorpay's test card (`4111 1111 1111 1111`, any future expiry, any CVV) to simulate payments.
+
 ## Created by
 
 [Pratik Gupta](https://pratik-gupta-portfolio.vercel.app/)

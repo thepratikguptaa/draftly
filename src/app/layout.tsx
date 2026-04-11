@@ -25,6 +25,7 @@ export default function RootLayout({
       lang="en"
       className={`${poppins.variable} h-full antialiased`}
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-poppins)]">
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />

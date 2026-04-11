@@ -4,6 +4,7 @@ export interface IUser {
   _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
+  password?: string;
   image: string;
   isPremium: boolean;
   dailyRefactorCount: number;
@@ -13,6 +14,7 @@ export interface IUser {
 const UserSchema = new Schema<IUser>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  password: { type: String, default: "" },
   image: { type: String, default: "" },
   isPremium: { type: Boolean, default: false },
   dailyRefactorCount: { type: Number, default: 0 },

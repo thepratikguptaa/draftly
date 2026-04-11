@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Post } from "@/models/Post";
 import { User } from "@/models/User";
+import { Comment } from "@/models/Comment";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -48,6 +49,13 @@ export async function GET() {
   const users = await User.find({ _id: { $in: userIds } }).lean();
   const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
+  const postIds = posts.map((p) => p._id);
+  const commentCounts = await Comment.aggregate([
+    { $match: { postId: { $in: postIds } } },
+    { $group: { _id: "$postId", count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(commentCounts.map((c) => [c._id.toString(), c.count]));
+
   const feed = posts.map((post) => {
     const user = userMap.get(post.userId.toString());
     return {
@@ -55,6 +63,7 @@ export async function GET() {
       text: post.text,
       imageUrl: post.imageUrl,
       createdAt: post.createdAt,
+      commentCount: countMap.get(post._id.toString()) || 0,
       user: user
         ? { name: user.name, image: user.image, isPremium: user.isPremium }
         : { name: "Unknown", image: "", isPremium: false },

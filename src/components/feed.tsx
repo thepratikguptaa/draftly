@@ -1,13 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Crown, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Crown, Loader2, MessageCircle, Send, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
 
 interface FeedPost {
   _id: string;
   text: string;
   imageUrl?: string;
+  createdAt: string;
+  commentCount: number;
+  user: { name: string; image: string; isPremium: boolean };
+}
+
+interface CommentData {
+  _id: string;
+  postId: string;
+  text: string;
   createdAt: string;
   user: { name: string; image: string; isPremium: boolean };
 }
@@ -23,9 +35,143 @@ function timeAgo(dateStr: string): string {
   return `${days}d`;
 }
 
+function PostComments({ postId }: { postId: string }) {
+  const { data: session } = useSession();
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/comment?postId=${postId}`);
+        if (res.ok) setComments(await res.json());
+      } catch { /* ignore */ }
+      finally { setLoading(false); }
+    }
+    load();
+  }, [postId]);
+
+  async function handlePost() {
+    if (!newComment.trim()) return;
+    setPosting(true);
+    try {
+      const res = await fetch("/api/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, text: newComment }),
+      });
+      if (res.ok) {
+        const comment = await res.json();
+        setComments((prev) => [...prev, comment]);
+        setNewComment("");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to comment");
+      }
+    } catch { toast.error("Failed to comment"); }
+    finally { setPosting(false); }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/comment/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setComments((prev) => prev.filter((c) => c._id !== id));
+      } else {
+        toast.error("Failed to delete");
+      }
+    } catch { toast.error("Failed to delete"); }
+    finally { setDeletingId(null); }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-3">
+      {loading ? (
+        <div className="flex justify-center py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
+        </div>
+      ) : (
+        <>
+          {comments.length > 0 && (
+            <div className="space-y-2.5">
+              {comments.map((comment) => (
+                <div key={comment._id} className="group/comment flex items-start gap-2.5">
+                  <Avatar className="h-6 w-6 border border-white/[0.08] flex-shrink-0 mt-0.5">
+                    <AvatarImage src={comment.user.image} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                      {comment.user.name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-semibold text-foreground/80">{comment.user.name}</span>
+                        {comment.user.isPremium && <Crown className="h-2.5 w-2.5 text-amber-400" />}
+                        <span className="text-[10px] text-muted-foreground/30 ml-auto">{timeAgo(comment.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-foreground/70 leading-relaxed break-words">{comment.text}</p>
+                    </div>
+                  </div>
+                  {session?.user?.name === comment.user.name && (
+                    <button
+                      onClick={() => handleDelete(comment._id)}
+                      disabled={deletingId === comment._id}
+                      className="opacity-0 group-hover/comment:opacity-100 transition-opacity mt-1.5 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/30 hover:text-red-400"
+                    >
+                      {deletingId === comment._id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add comment input */}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6 border border-white/[0.08] flex-shrink-0">
+              <AvatarImage src={session?.user?.image || ""} />
+              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                {session?.user?.name?.[0] || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex items-center gap-1.5 rounded-xl bg-white/[0.03] border border-white/[0.05] focus-within:border-primary/20 transition-colors px-3 py-1.5">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handlePost()}
+                placeholder="Write a comment..."
+                maxLength={280}
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/30 text-foreground/80"
+              />
+              <button
+                onClick={handlePost}
+                disabled={posting || !newComment.trim()}
+                className="text-primary/60 hover:text-primary disabled:text-muted-foreground/20 transition-colors p-0.5"
+              >
+                {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function Feed({ refreshKey }: { refreshKey: number }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function loadPosts() {
@@ -38,6 +184,15 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
     }
     loadPosts();
   }, [refreshKey]);
+
+  function toggleComments(postId: string) {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+  }
 
   if (loading) {
     return (
@@ -64,58 +219,69 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div className="space-y-3">
-      {posts.map((post, i) => (
-        <article
-          key={post._id}
-          className="group relative rounded-2xl border border-white/[0.05] bg-card/40 backdrop-blur-sm p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-card/60 hover:shadow-xl hover:shadow-primary/[0.04] hover:-translate-y-0.5"
-          style={{ animationDelay: `${i * 50}ms` }}
-        >
-          <div className="flex items-start gap-4">
-            {/* Avatar with gradient ring for premium */}
-            <div className={`flex-shrink-0 rounded-full ${post.user.isPremium ? "p-0.5 bg-gradient-to-br from-amber-400/50 to-orange-500/50" : ""}`}>
-              <Avatar className={`h-10 w-10 ${post.user.isPremium ? "border-2 border-background" : "border border-white/[0.08]"}`}>
-                <AvatarImage src={post.user.image} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {post.user.name?.[0] || "?"}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+      {posts.map((post) => {
+        const isExpanded = expandedPosts.has(post._id);
 
-            <div className="flex-1 min-w-0">
-              {/* Name row */}
-              <div className="flex items-center gap-2 mb-1.5">
+        return (
+          <article
+            key={post._id}
+            className="group rounded-2xl border border-white/[0.05] bg-card/40 backdrop-blur-sm p-5 transition-all duration-300 hover:border-white/[0.1] hover:bg-card/60"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`flex-shrink-0 rounded-full ${post.user.isPremium ? "p-0.5 bg-gradient-to-br from-amber-400/50 to-orange-500/50" : ""}`}>
+                <Avatar className={`h-8 w-8 ${post.user.isPremium ? "border-2 border-background" : "border border-white/[0.08]"}`}>
+                  <AvatarImage src={post.user.image} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                    {post.user.name?.[0] || "?"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="font-semibold text-sm text-foreground/90 truncate">
                   {post.user.name}
                 </span>
                 {post.user.isPremium && (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400">
-                    <Crown className="h-2.5 w-2.5" /> Pro
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-400">
+                    <Crown className="h-2 w-2" /> Pro
                   </span>
                 )}
-                <span className="text-[11px] text-muted-foreground/40 ml-auto flex-shrink-0 font-medium">
-                  {timeAgo(post.createdAt)}
-                </span>
               </div>
 
-              {/* Post text */}
-              <p className="text-[15px] leading-[1.7] whitespace-pre-wrap break-words text-foreground/80">
-                {post.text}
-              </p>
-
-              {/* Image */}
-              {post.imageUrl && (
-                <div className="mt-4 rounded-2xl overflow-hidden border border-white/[0.06]">
-                  <img
-                    src={post.imageUrl}
-                    alt=""
-                    className="w-full object-contain bg-black/20"
-                  />
-                </div>
-              )}
+              <span className="text-[11px] text-muted-foreground/40 flex-shrink-0 font-medium">
+                {timeAgo(post.createdAt)}
+              </span>
             </div>
-          </div>
-        </article>
-      ))}
+
+            <p className="text-[15px] leading-[1.75] whitespace-pre-wrap break-words text-foreground/80">
+              {post.text}
+            </p>
+
+            {post.imageUrl && (
+              <div className="mt-4 rounded-2xl overflow-hidden border border-white/[0.06]">
+                <img src={post.imageUrl} alt="" className="w-full object-contain bg-black/20" />
+              </div>
+            )}
+
+            {/* Comment toggle button */}
+            <div className="mt-3 pt-2">
+              <button
+                onClick={() => toggleComments(post._id)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-primary/70 transition-colors"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span>
+                  {post.commentCount > 0 ? `${post.commentCount} comment${post.commentCount !== 1 ? "s" : ""}` : "Comment"}
+                </span>
+                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </div>
+
+            {/* Expanded comments */}
+            {isExpanded && <PostComments postId={post._id} />}
+          </article>
+        );
+      })}
     </div>
   );
 }

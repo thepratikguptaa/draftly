@@ -7,7 +7,8 @@ import { Header } from "@/components/header";
 import { ComposePost } from "@/components/compose-post";
 import { Feed } from "@/components/feed";
 import { Footer } from "@/components/footer";
-import { Loader2, Sparkles } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Crown, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export default function HomePage() {
@@ -18,6 +19,8 @@ export default function HomePage() {
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
+
+  const isPremium = (session?.user as any)?.isPremium;
 
   async function handleUpgrade() {
     try {
@@ -82,21 +85,58 @@ export default function HomePage() {
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header onUpgrade={handleUpgrade} />
 
-        <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-          <ComposePost onPostCreated={() => setRefreshKey((k) => k + 1)} />
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+          {/* Two-column layout: sidebar + feed */}
+          <div className="flex gap-8 items-start">
+            {/* Left sidebar - sticky */}
+            <aside className="hidden lg:flex flex-col gap-5 w-[380px] flex-shrink-0 sticky top-24">
+              {/* Profile card */}
+              <div className="rounded-2xl border border-white/[0.06] bg-card/50 backdrop-blur-xl p-5">
+                <div className="flex items-center gap-3.5">
+                  <div className={`flex-shrink-0 rounded-full ${isPremium ? "p-0.5 bg-gradient-to-br from-amber-400/50 to-orange-500/50" : ""}`}>
+                    <Avatar className={`h-11 w-11 ${isPremium ? "border-2 border-background" : "border border-white/[0.08]"}`}>
+                      <AvatarImage src={session.user.image || ""} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {session.user.name?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-sm truncate">{session.user.name}</span>
+                      {isPremium && <Crown className="h-3 w-3 text-amber-400 flex-shrink-0" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground/60 truncate">{session.user.email}</p>
+                  </div>
+                </div>
+              </div>
 
-          {/* Feed section header */}
-          <div className="flex items-center gap-3 pt-2">
-            <div className="h-8 w-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-              <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+              {/* Compose box */}
+              <ComposePost onPostCreated={() => setRefreshKey((k) => k + 1)} />
+
+            </aside>
+
+            {/* Right column - feed */}
+            <div className="flex-1 min-w-0 space-y-6">
+              {/* Mobile compose (hidden on desktop) */}
+              <div className="lg:hidden">
+                <ComposePost onPostCreated={() => setRefreshKey((k) => k + 1)} />
+              </div>
+
+              {/* Feed header */}
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+                  <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+                </div>
+                <h2 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
+                  Latest Posts
+                </h2>
+                <div className="flex-1 h-px bg-gradient-to-r from-white/[0.06] to-transparent" />
+              </div>
+
+              <Feed refreshKey={refreshKey} />
             </div>
-            <h2 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
-              Latest Posts
-            </h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-white/[0.06] to-transparent" />
           </div>
-
-          <Feed refreshKey={refreshKey} />
         </main>
 
         <Footer />

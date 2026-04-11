@@ -9,11 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, Sparkles, ArrowUpRight } from "lucide-react";
+import { Crown, LogOut, Sparkles, ArrowUpRight, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header({ onUpgrade }: { onUpgrade: () => void }) {
   const { data: session } = useSession();
+  const router = useRouter();
   if (!session) return null;
 
   const isPremium = (session.user as any).isPremium;
@@ -22,7 +24,7 @@ export function Header({ onUpgrade }: { onUpgrade: () => void }) {
     <header className="sticky top-0 z-50 bg-background/60 backdrop-blur-2xl">
       {/* Gradient line */}
       <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center border border-primary/15 shadow-sm shadow-primary/10">
@@ -72,6 +74,13 @@ export function Header({ onUpgrade }: { onUpgrade: () => void }) {
                 <p className="text-xs text-muted-foreground mt-0.5">{session.user.email}</p>
               </div>
               <div className="h-px bg-border/50 my-1" />
+              <DropdownMenuItem
+                onClick={() => router.push("/me")}
+                className="gap-2.5 rounded-xl cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors font-medium"
+              >
+                <User className="h-4 w-4" />
+                My Posts
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => signOut()}
                 className="gap-2.5 text-red-400 rounded-xl cursor-pointer hover:bg-red-500/10 transition-colors"
