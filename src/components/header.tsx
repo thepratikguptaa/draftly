@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Crown, LogOut, Sparkles, ArrowUpRight } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Header({ onUpgrade }: { onUpgrade: () => void }) {
   const { data: session } = useSession();
@@ -51,6 +52,8 @@ export function Header({ onUpgrade }: { onUpgrade: () => void }) {
               <ArrowUpRight className="h-3 w-3 opacity-70" />
             </Button>
           )}
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full outline-none transition-all hover:scale-105">
