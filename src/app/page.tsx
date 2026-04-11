@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { ComposePost } from "@/components/compose-post";
 import { Feed } from "@/components/feed";
+import { Footer } from "@/components/footer";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,7 +79,7 @@ export default function HomePage() {
         <div className="absolute bottom-[-10%] right-[5%] w-[400px] h-[400px] rounded-full bg-chart-2/[0.05] blur-[120px] animate-glow-pulse [animation-delay:2s]" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 min-h-screen flex flex-col">
         <Header onUpgrade={handleUpgrade} />
 
         <main className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -97,6 +98,8 @@ export default function HomePage() {
 
           <Feed refreshKey={refreshKey} />
         </main>
+
+        <Footer />
       </div>
     </div>
   );

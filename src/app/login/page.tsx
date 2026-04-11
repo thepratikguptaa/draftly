@@ -2,11 +2,12 @@
 
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { Footer } from "@/components/footer";
 import { Sparkles, Wand2, Zap, PenLine } from "lucide-react";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden noise-bg">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden noise-bg">
       {/* Animated orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[120px] animate-glow-pulse" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-primary/15 blur-[100px] animate-glow-pulse [animation-delay:1.5s]" />
@@ -61,6 +62,8 @@ export default function LoginPage() {
             Start writing AI-enhanced posts in seconds
           </p>
         </div>
+
+        <Footer />
       </div>
     </div>
   );
