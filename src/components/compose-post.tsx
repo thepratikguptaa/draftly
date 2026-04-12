@@ -151,17 +151,17 @@ export function ComposePost({ onPostCreated }: ComposePostProps) {
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.04]">
           <Select value={style} onValueChange={(v) => v && setStyle(v)} disabled={isRefactoring}>
-            <SelectTrigger className="w-[130px] h-9 text-xs font-medium rounded-xl bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.08] transition-colors">
+            <SelectTrigger className="w-[150px] h-9 text-xs font-medium rounded-xl bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.08] transition-colors">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl border-white/[0.08] bg-card/95 backdrop-blur-xl">
+            <SelectContent className="rounded-2xl border-white/[0.08] bg-card/95 backdrop-blur-xl p-1">
               {STYLES.map((s) => (
-                <SelectItem key={s.value} value={s.value} disabled={s.premium && !isPremium} className="rounded-xl text-xs">
+                <SelectItem key={s.value} value={s.value} disabled={s.premium && !isPremium} className="rounded-xl text-xs py-2">
                   <span className="flex items-center gap-2">
                     {s.label}
-                    {s.premium && !isPremium && <Lock className="h-3 w-3 text-muted-foreground/50" />}
+                    {s.premium && !isPremium && <Lock className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />}
                     {s.premium && (
-                      <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-400">Pro</span>
+                      <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-400 flex-shrink-0 leading-none">Pro</span>
                     )}
                   </span>
                 </SelectItem>
