@@ -1,6 +1,6 @@
 # Draftly
 
-AI-powered microblogging platform. Write posts, refactor them with AI, comment, upload images, and go premium for advanced features.
+AI-powered microblogging platform. Write posts, refactor them with AI, like, comment, search, upload images, and go premium for advanced features.
 
 ## Tech Stack
 
@@ -10,29 +10,35 @@ Next.js 16 (App Router) | Tailwind CSS | shadcn/ui | MongoDB | Auth.js | Azure O
 
 - **Authentication** - Google OAuth + email/password signup & login
 - **AI Refactor** - Rewrite posts in 5 styles: basic, professional, casual, funny, concise
-- **Comments** - Inline comment threads on every post
+- **Like/Heart** - Like posts with optimistic UI, like counts on every post
+- **Comments** - Inline threaded comments on every post, delete your own
+- **Search** - Search posts by keyword in real time
 - **Image Upload** - Attach images to posts via ImageKit (premium)
 - **Premium Upgrade** - Pay via Razorpay to unlock unlimited refactors, all styles, and image uploads
 - **My Posts** - View, edit, and delete your own posts
 - **Dark/Light Mode** - Theme toggle with persistence
-- **Two-Column Layout** - Sidebar with compose box, feed on the right (responsive)
+- **Two-Column Layout** - Sidebar with profile card and compose box, feed on the right (responsive, collapses on mobile)
 
 ## Database
 
-**MongoDB** with three collections:
+**MongoDB** with four collections:
 
-- `users` - name, email, password (hashed), image, isPremium, dailyRefactorCount, lastRefactorDate
-- `posts` - userId, text, imageUrl, createdAt
-- `comments` - postId, userId, text, createdAt
+| Collection | Fields |
+|---|---|
+| `users` | name, email, password (hashed), image, isPremium, dailyRefactorCount, lastRefactorDate |
+| `posts` | userId, text, imageUrl, createdAt |
+| `comments` | postId, userId, text, createdAt |
+| `likes` | postId, userId, createdAt (unique index on postId + userId) |
 
 ## API Routes
 
 | Method | Route | Description |
 |---|---|---|
 | POST | `/api/signup` | Create account with email/password |
-| POST / GET | `/api/post` | Create post / list all posts (with comment counts) |
+| POST / GET | `/api/post` | Create post / list all posts (with like & comment counts, search via `?q=`) |
 | PUT / DELETE | `/api/post/[id]` | Edit / delete own post |
 | GET | `/api/post/me` | List current user's posts |
+| POST | `/api/like` | Toggle like/unlike on a post |
 | POST / GET | `/api/comment` | Add comment / list comments for a post |
 | DELETE | `/api/comment/[id]` | Delete own comment |
 | POST | `/api/refactor` | AI-powered text refactoring |
@@ -47,7 +53,8 @@ Next.js 16 (App Router) | Tailwind CSS | shadcn/ui | MongoDB | Auth.js | Azure O
 |---|---|---|
 | AI Refactor | 5/day, basic style only | Unlimited, all 5 styles |
 | Image Upload | Not available | Up to 2MB per image |
-| Comments | Yes | Yes |
+| Likes & Comments | Yes | Yes |
+| Search | Yes | Yes |
 
 ## Getting Started
 
@@ -74,7 +81,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
 | `IMAGEKIT_PRIVATE_KEY` | ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT` | ImageKit URL endpoint |
-
 
 ## Created by
 
