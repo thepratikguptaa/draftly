@@ -24,7 +24,7 @@ export function Header({ onUpgrade }: { onUpgrade: () => void }) {
     <header className="sticky top-0 z-50 bg-background/60 backdrop-blur-2xl">
       {/* Gradient line */}
       <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="w-full px-6 lg:px-10 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center border border-primary/15 shadow-sm shadow-primary/10">

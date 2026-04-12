@@ -8,13 +8,15 @@ import { ComposePost } from "@/components/compose-post";
 import { Feed } from "@/components/feed";
 import { Footer } from "@/components/footer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Crown, Loader2, Sparkles } from "lucide-react";
+import { Crown, Loader2, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -85,11 +87,11 @@ export default function HomePage() {
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header onUpgrade={handleUpgrade} />
 
-        <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+        <main className="flex-1 w-full px-6 lg:px-10 py-8">
           {/* Two-column layout: sidebar + feed */}
           <div className="flex gap-8 items-start">
             {/* Left sidebar - sticky */}
-            <aside className="hidden lg:flex flex-col gap-5 w-[380px] flex-shrink-0 sticky top-24">
+            <aside className="hidden lg:flex flex-col gap-5 w-[500px] flex-shrink-0 sticky top-24">
               {/* Profile card */}
               <div className="rounded-2xl border border-white/[0.06] bg-card/50 backdrop-blur-xl p-5">
                 <div className="flex items-center gap-3.5">
@@ -123,18 +125,41 @@ export default function HomePage() {
                 <ComposePost onPostCreated={() => setRefreshKey((k) => k + 1)} />
               </div>
 
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <input
+                  type="text"
+                  placeholder="Search posts..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setSearchQuery(searchInput);
+                  }}
+                  className="w-full h-10 pl-10 pr-10 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm outline-none focus:border-primary/30 placeholder:text-muted-foreground/30 transition-colors"
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => { setSearchInput(""); setSearchQuery(""); }}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
               {/* Feed header */}
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
                   <Sparkles className="h-3.5 w-3.5 text-primary/60" />
                 </div>
                 <h2 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.15em]">
-                  Latest Posts
+                  {searchQuery ? `Results for "${searchQuery}"` : "Latest Posts"}
                 </h2>
                 <div className="flex-1 h-px bg-gradient-to-r from-white/[0.06] to-transparent" />
               </div>
 
-              <Feed refreshKey={refreshKey} />
+              <Feed refreshKey={refreshKey} searchQuery={searchQuery} />
             </div>
           </div>
         </main>

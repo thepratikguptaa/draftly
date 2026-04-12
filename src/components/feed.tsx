@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Crown, Loader2, MessageCircle, Send, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Crown, Loader2, MessageCircle, Send, Trash2, ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { toast } from "sonner";
 
 interface FeedPost {
@@ -13,6 +13,8 @@ interface FeedPost {
   imageUrl?: string;
   createdAt: string;
   commentCount: number;
+  likeCount: number;
+  isLiked: boolean;
   user: { name: string; image: string; isPremium: boolean };
 }
 
@@ -80,11 +82,8 @@ function PostComments({ postId }: { postId: string }) {
     setDeletingId(id);
     try {
       const res = await fetch(`/api/comment/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setComments((prev) => prev.filter((c) => c._id !== id));
-      } else {
-        toast.error("Failed to delete");
-      }
+      if (res.ok) setComments((prev) => prev.filter((c) => c._id !== id));
+      else toast.error("Failed to delete");
     } catch { toast.error("Failed to delete"); }
     finally { setDeletingId(null); }
   }
@@ -123,11 +122,7 @@ function PostComments({ postId }: { postId: string }) {
                       disabled={deletingId === comment._id}
                       className="sm:opacity-0 sm:group-hover/comment:opacity-100 transition-opacity mt-1.5 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/30 hover:text-red-400"
                     >
-                      {deletingId === comment._id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
+                      {deletingId === comment._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                     </button>
                   )}
                 </div>
@@ -135,7 +130,6 @@ function PostComments({ postId }: { postId: string }) {
             </div>
           )}
 
-          {/* Add comment input */}
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6 border border-white/[0.08] flex-shrink-0">
               <AvatarImage src={session?.user?.image || ""} />
@@ -168,7 +162,7 @@ function PostComments({ postId }: { postId: string }) {
   );
 }
 
-export function Feed({ refreshKey }: { refreshKey: number }) {
+export function Feed({ refreshKey, searchQuery }: { refreshKey: number; searchQuery?: string }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -177,13 +171,16 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
     async function loadPosts() {
       setLoading(true);
       try {
-        const res = await fetch("/api/post");
+        const url = searchQuery
+          ? `/api/post?q=${encodeURIComponent(searchQuery)}`
+          : "/api/post";
+        const res = await fetch(url);
         if (res.ok) setPosts(await res.json());
       } catch { console.error("Failed to load posts"); }
       finally { setLoading(false); }
     }
     loadPosts();
-  }, [refreshKey]);
+  }, [refreshKey, searchQuery]);
 
   function toggleComments(postId: string) {
     setExpandedPosts((prev) => {
@@ -192,6 +189,46 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
       else next.add(postId);
       return next;
     });
+  }
+
+  async function handleLike(postId: string) {
+    // Optimistic update
+    setPosts((prev) =>
+      prev.map((p) =>
+        p._id === postId
+          ? {
+              ...p,
+              isLiked: !p.isLiked,
+              likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1,
+            }
+          : p
+      )
+    );
+
+    try {
+      const res = await fetch("/api/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId }),
+      });
+      if (!res.ok) {
+        // Revert on failure
+        setPosts((prev) =>
+          prev.map((p) =>
+            p._id === postId
+              ? {
+                  ...p,
+                  isLiked: !p.isLiked,
+                  likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1,
+                }
+              : p
+          )
+        );
+        toast.error("Failed to like");
+      }
+    } catch {
+      toast.error("Failed to like");
+    }
   }
 
   if (loading) {
@@ -209,10 +246,14 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
     return (
       <div className="text-center py-20">
         <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-white/[0.04] border border-white/[0.06] mb-4">
-          <span className="text-2xl">✍️</span>
+          <span className="text-2xl">{searchQuery ? "🔍" : "✍️"}</span>
         </div>
-        <p className="text-sm text-muted-foreground">No posts yet</p>
-        <p className="text-xs text-muted-foreground/50 mt-1">Be the first to write something!</p>
+        <p className="text-sm text-muted-foreground">
+          {searchQuery ? `No posts found for "${searchQuery}"` : "No posts yet"}
+        </p>
+        {!searchQuery && (
+          <p className="text-xs text-muted-foreground/50 mt-1">Be the first to write something!</p>
+        )}
       </div>
     );
   }
@@ -263,21 +304,40 @@ export function Feed({ refreshKey }: { refreshKey: number }) {
               </div>
             )}
 
-            {/* Comment toggle button */}
-            <div className="mt-3 pt-2">
+            {/* Action bar */}
+            <div className="mt-3 pt-2 flex items-center gap-4">
+              {/* Like */}
+              <button
+                onClick={() => handleLike(post._id)}
+                className={`flex items-center gap-1.5 text-xs transition-all duration-200 ${
+                  post.isLiked
+                    ? "text-rose-500"
+                    : "text-muted-foreground/50 hover:text-rose-500/70"
+                }`}
+              >
+                <Heart
+                  className={`h-4 w-4 transition-all duration-200 ${
+                    post.isLiked ? "fill-rose-500 scale-110" : "hover:scale-110"
+                  }`}
+                />
+                {post.likeCount > 0 && (
+                  <span className="font-medium tabular-nums">{post.likeCount}</span>
+                )}
+              </button>
+
+              {/* Comment toggle */}
               <button
                 onClick={() => toggleComments(post._id)}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-primary/70 transition-colors"
               >
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span>
-                  {post.commentCount > 0 ? `${post.commentCount} comment${post.commentCount !== 1 ? "s" : ""}` : "Comment"}
-                </span>
+                <MessageCircle className="h-4 w-4" />
+                {post.commentCount > 0 && (
+                  <span className="font-medium tabular-nums">{post.commentCount}</span>
+                )}
                 {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             </div>
 
-            {/* Expanded comments */}
             {isExpanded && <PostComments postId={post._id} />}
           </article>
         );
