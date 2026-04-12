@@ -75,9 +75,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `IMAGEKIT_PRIVATE_KEY` | ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT` | ImageKit URL endpoint |
 
-## Note
-
-Razorpay is configured in **test mode**. No real payments are processed. Use test card `4111 1111 1111 1111` (any future expiry, any CVV) to simulate payments during development.
 
 ## Created by
 
