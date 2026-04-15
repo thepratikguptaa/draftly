@@ -9,6 +9,7 @@ import { Feed } from "@/components/feed";
 import { Footer } from "@/components/footer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Crown, Loader2, Search, Sparkles, X } from "lucide-react";
+import { Skeleton } from "boneyard-js/react";
 import { toast } from "sonner";
 
 export default function HomePage() {
@@ -68,8 +69,82 @@ export default function HomePage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center noise-bg">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+      <div className="min-h-screen noise-bg">
+        {/* Header skeleton */}
+        <div className="sticky top-0 z-50 bg-background/60 backdrop-blur-2xl">
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          <div className="w-full px-6 lg:px-10 h-16 flex items-center justify-between">
+            <Skeleton name="header-logo" loading={true}>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-muted" />
+                <div className="h-5 w-20 rounded bg-muted" />
+              </div>
+            </Skeleton>
+            <Skeleton name="header-actions" loading={true}>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-muted" />
+              </div>
+            </Skeleton>
+          </div>
+        </div>
+        {/* Body skeleton */}
+        <div className="w-full px-6 lg:px-10 py-8">
+          <div className="flex gap-8 items-start">
+            <div className="hidden lg:flex flex-col gap-5 w-[450px] flex-shrink-0">
+              <Skeleton name="profile-card" loading={true}>
+                <div className="rounded-2xl border border-white/[0.06] bg-card/50 p-5">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-11 w-11 rounded-full bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-28 rounded bg-muted" />
+                      <div className="h-3 w-40 rounded bg-muted" />
+                    </div>
+                  </div>
+                </div>
+              </Skeleton>
+              <Skeleton name="compose-skeleton" loading={true}>
+                <div className="rounded-[20px] border border-white/[0.06] bg-card/70 p-6 space-y-4">
+                  <div className="h-3 w-20 rounded bg-muted" />
+                  <div className="h-[120px] w-full rounded-2xl bg-muted/50" />
+                  <div className="h-1 w-full rounded bg-muted/30" />
+                  <div className="flex gap-2 pt-2">
+                    <div className="h-9 w-[150px] rounded-xl bg-muted/50" />
+                    <div className="h-9 w-20 rounded-xl bg-muted/50" />
+                    <div className="flex-1" />
+                    <div className="h-9 w-20 rounded-xl bg-muted/50" />
+                  </div>
+                </div>
+              </Skeleton>
+            </div>
+            <div className="flex-1 min-w-0 space-y-6">
+              <Skeleton name="search-skeleton" loading={true}>
+                <div className="h-10 w-full rounded-xl bg-muted/50" />
+              </Skeleton>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} name={`page-post-${i}`} loading={true}>
+                    <div className="rounded-2xl border border-white/[0.05] bg-card/40 p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-8 w-8 rounded-full bg-muted" />
+                        <div className="h-3.5 w-28 rounded bg-muted" />
+                        <div className="flex-1" />
+                        <div className="h-3 w-8 rounded bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3.5 w-full rounded bg-muted" />
+                        <div className="h-3.5 w-3/4 rounded bg-muted" />
+                      </div>
+                      <div className="flex gap-4 mt-4 pt-2">
+                        <div className="h-4 w-10 rounded bg-muted" />
+                        <div className="h-4 w-16 rounded bg-muted" />
+                      </div>
+                    </div>
+                  </Skeleton>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

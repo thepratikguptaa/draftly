@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Skeleton } from "boneyard-js/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Crown, Loader2, MessageCircle, Send, Trash2, ChevronDown, ChevronUp, Heart } from "lucide-react";
@@ -91,8 +92,18 @@ function PostComments({ postId }: { postId: string }) {
   return (
     <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-3">
       {loading ? (
-        <div className="flex justify-center py-3">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/40" />
+        <div className="space-y-2.5">
+          {[1, 2].map((i) => (
+            <Skeleton key={i} name={`comment-${postId}-${i}`} loading={true}>
+              <div className="flex items-start gap-2.5">
+                <div className="h-6 w-6 rounded-full bg-muted flex-shrink-0" />
+                <div className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2 space-y-1.5">
+                  <div className="h-3 w-20 rounded bg-muted" />
+                  <div className="h-2.5 w-full rounded bg-muted/70" />
+                </div>
+              </div>
+            </Skeleton>
+          ))}
         </div>
       ) : (
         <>
@@ -165,22 +176,36 @@ function PostComments({ postId }: { postId: string }) {
 export function Feed({ refreshKey, searchQuery }: { refreshKey: number; searchQuery?: string }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    async function loadPosts() {
-      setLoading(true);
-      try {
-        const url = searchQuery
-          ? `/api/post?q=${encodeURIComponent(searchQuery)}`
-          : "/api/post";
-        const res = await fetch(url);
-        if (res.ok) setPosts(await res.json());
-      } catch { console.error("Failed to load posts"); }
-      finally { setLoading(false); }
-    }
-    loadPosts();
+    setPage(1);
+    setPosts([]);
+    loadPosts(1, true);
   }, [refreshKey, searchQuery]);
+
+  async function loadPosts(pageNum: number, reset = false) {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ page: String(pageNum), limit: "3" });
+      if (searchQuery) params.set("q", searchQuery);
+      const res = await fetch(`/api/post?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        const newPosts = data.posts || [];
+        const pagination = data.pagination;
+        if (reset) setPosts(newPosts);
+        else setPosts((prev) => [...prev, ...newPosts]);
+        setHasMore(pagination ? pagination.page < pagination.totalPages : false);
+        setPage(pageNum);
+      }
+    } catch { console.error("Failed to load posts"); }
+    finally { setLoading(false); setLoadingMore(false); }
+  }
 
   function toggleComments(postId: string) {
     setExpandedPosts((prev) => {
@@ -233,11 +258,33 @@ export function Feed({ refreshKey, searchQuery }: { refreshKey: number; searchQu
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
-          <span className="text-xs text-muted-foreground/50">Loading posts...</span>
-        </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border border-white/[0.05] bg-card/40 p-5">
+            <Skeleton name={`post-header-${i}`} loading={true}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-8 w-8 rounded-full bg-muted" />
+                <div className="flex-1">
+                  <div className="h-3.5 w-28 rounded bg-muted mb-1.5" />
+                </div>
+                <div className="h-3 w-8 rounded bg-muted" />
+              </div>
+            </Skeleton>
+            <Skeleton name={`post-body-${i}`} loading={true}>
+              <div className="space-y-2">
+                <div className="h-3.5 w-full rounded bg-muted" />
+                <div className="h-3.5 w-3/4 rounded bg-muted" />
+                <div className="h-3.5 w-1/2 rounded bg-muted" />
+              </div>
+            </Skeleton>
+            <Skeleton name={`post-actions-${i}`} loading={true}>
+              <div className="flex gap-4 mt-4 pt-2">
+                <div className="h-4 w-10 rounded bg-muted" />
+                <div className="h-4 w-16 rounded bg-muted" />
+              </div>
+            </Skeleton>
+          </div>
+        ))}
       </div>
     );
   }
@@ -342,6 +389,44 @@ export function Feed({ refreshKey, searchQuery }: { refreshKey: number; searchQu
           </article>
         );
       })}
+
+      {/* Load More skeleton */}
+      {loadingMore && (
+        <div className="space-y-3 pt-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl border border-white/[0.05] bg-card/40 p-5">
+              <Skeleton name={`load-more-${page}-${i}`} loading={true}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-full bg-muted" />
+                  <div className="h-3.5 w-28 rounded bg-muted" />
+                  <div className="flex-1" />
+                  <div className="h-3 w-8 rounded bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3.5 w-full rounded bg-muted" />
+                  <div className="h-3.5 w-3/4 rounded bg-muted" />
+                </div>
+                <div className="flex gap-4 mt-4 pt-2">
+                  <div className="h-4 w-10 rounded bg-muted" />
+                  <div className="h-4 w-16 rounded bg-muted" />
+                </div>
+              </Skeleton>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Load More button */}
+      {hasMore && !loadingMore && (
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={() => loadPosts(page + 1)}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.08] hover:border-white/[0.1] transition-all"
+          >
+            Load more
+          </button>
+        </div>
+      )}
     </div>
   );
 }

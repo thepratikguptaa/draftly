@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
-
-const STYLES = ["basic", "professional", "casual", "funny", "concise"] as const;
-type Style = (typeof STYLES)[number];
+import { refactorSchema } from "@/lib/validations";
+import { rateLimit } from "@/lib/rate-limit";
 
 function isNewDay(lastDate: Date): boolean {
   const now = new Date();
@@ -21,15 +20,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { text, style } = (await req.json()) as { text: string; style: Style };
-
-  if (!text || text.length > 280) {
-    return NextResponse.json({ error: "Text required (max 280 chars)" }, { status: 400 });
+  // Rate limit: 20 refactors per 15 minutes
+  const rl = rateLimit(`refactor:${session.user.id}`, 20, 15 * 60 * 1000);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many refactors. Slow down." }, { status: 429 });
   }
 
-  if (!STYLES.includes(style)) {
-    return NextResponse.json({ error: "Invalid style" }, { status: 400 });
+  const body = await req.json();
+  const parsed = refactorSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
+
+  const { text, style } = parsed.data;
 
   await connectDB();
   const user = await User.findById(session.user.id);
@@ -37,17 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Free users: only basic style, max 5/day
   if (!user.isPremium) {
     if (style !== "basic") {
       return NextResponse.json({ error: "Premium styles require an upgrade" }, { status: 403 });
     }
-
     if (isNewDay(user.lastRefactorDate)) {
       user.dailyRefactorCount = 0;
       user.lastRefactorDate = new Date();
     }
-
     if (user.dailyRefactorCount >= 5) {
       return NextResponse.json(
         { error: "Daily refactor limit reached (5/day). Upgrade for unlimited!" },
@@ -103,7 +103,6 @@ ${text}`;
       return NextResponse.json({ error: "No response from AI" }, { status: 502 });
     }
 
-    // Increment count for free users
     if (!user.isPremium) {
       user.dailyRefactorCount += 1;
       user.lastRefactorDate = new Date();

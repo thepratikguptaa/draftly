@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Comment } from "@/models/Comment";
+import { Post } from "@/models/Post";
 import { User } from "@/models/User";
+import { createCommentSchema, idParamSchema } from "@/lib/validations";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -10,13 +13,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { postId, text } = await req.json();
-
-  if (!postId || !text || text.length > 280) {
-    return NextResponse.json({ error: "Post ID and text required (max 280 chars)" }, { status: 400 });
+  // Rate limit: 60 comments per 15 minutes
+  const rl = rateLimit(`comment:${session.user.id}`, 60, 15 * 60 * 1000);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many comments. Slow down." }, { status: 429 });
   }
 
+  const body = await req.json();
+  const parsed = createCommentSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  const { postId, text } = parsed.data;
+
   await connectDB();
+
+  // Verify post exists
+  const post = await Post.findById(postId);
+  if (!post) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
 
   const comment = await Comment.create({
     postId,
@@ -39,8 +56,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const postId = req.nextUrl.searchParams.get("postId");
-  if (!postId) {
-    return NextResponse.json({ error: "postId required" }, { status: 400 });
+  if (!postId || !idParamSchema.safeParse(postId).success) {
+    return NextResponse.json({ error: "Valid postId required" }, { status: 400 });
   }
 
   await connectDB();
@@ -63,7 +80,6 @@ export async function GET(req: NextRequest) {
       user: user
         ? { name: user.name, image: user.image, isPremium: user.isPremium }
         : { name: "Unknown", image: "", isPremium: false },
-      isOwn: false, // will be set client-side
     };
   });
 

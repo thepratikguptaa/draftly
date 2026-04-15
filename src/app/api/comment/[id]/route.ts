@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Comment } from "@/models/Comment";
+import { idParamSchema } from "@/lib/validations";
 
 export async function DELETE(
   req: NextRequest,
@@ -13,6 +14,10 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  if (!idParamSchema.safeParse(id).success) {
+    return NextResponse.json({ error: "Invalid comment ID" }, { status: 400 });
+  }
+
   await connectDB();
 
   const comment = await Comment.findById(id);

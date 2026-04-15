@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Footer } from "@/components/footer";
+import { Skeleton } from "boneyard-js/react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -129,8 +130,46 @@ export default function MePage() {
 
   if (status === "loading" || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center noise-bg">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+      <div className="min-h-screen noise-bg">
+        <div className="sticky top-0 z-50 bg-background/60 backdrop-blur-2xl">
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-4">
+            <Skeleton name="me-back" loading={true}>
+              <div className="h-8 w-16 rounded-xl bg-muted" />
+            </Skeleton>
+            <div className="h-5 w-px bg-border/50" />
+            <Skeleton name="me-title" loading={true}>
+              <div className="h-4 w-20 rounded bg-muted" />
+            </Skeleton>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-8 w-full">
+          <Skeleton name="me-profile" loading={true}>
+            <div className="rounded-2xl border border-white/[0.06] bg-card/50 p-6 mb-8">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-muted" />
+                <div className="space-y-2">
+                  <div className="h-5 w-32 rounded bg-muted" />
+                  <div className="h-3 w-48 rounded bg-muted" />
+                  <div className="h-2.5 w-16 rounded bg-muted" />
+                </div>
+              </div>
+            </div>
+          </Skeleton>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} name={`me-post-${i}`} loading={true}>
+                <div className="rounded-2xl border border-white/[0.05] bg-card/40 p-5">
+                  <div className="space-y-2">
+                    <div className="h-3.5 w-full rounded bg-muted" />
+                    <div className="h-3.5 w-2/3 rounded bg-muted" />
+                  </div>
+                  <div className="h-2.5 w-14 rounded bg-muted mt-3" />
+                </div>
+              </Skeleton>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -192,8 +231,18 @@ export default function MePage() {
 
           {/* Posts */}
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary/40" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} name={`me-loading-post-${i}`} loading={true}>
+                  <div className="rounded-2xl border border-white/[0.05] bg-card/40 p-5">
+                    <div className="space-y-2">
+                      <div className="h-3.5 w-full rounded bg-muted" />
+                      <div className="h-3.5 w-2/3 rounded bg-muted" />
+                    </div>
+                    <div className="h-2.5 w-14 rounded bg-muted mt-3" />
+                  </div>
+                </Skeleton>
+              ))}
             </div>
           ) : posts.length === 0 ? (
             <div className="text-center py-16">

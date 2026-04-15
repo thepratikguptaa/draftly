@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Post } from "@/models/Post";
+import { Comment } from "@/models/Comment";
+import { Like } from "@/models/Like";
+import { updatePostSchema, idParamSchema } from "@/lib/validations";
 
 export async function DELETE(
   req: NextRequest,
@@ -13,6 +16,10 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  if (!idParamSchema.safeParse(id).success) {
+    return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
+  }
+
   await connectDB();
 
   const post = await Post.findById(id);
@@ -23,7 +30,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await Post.findByIdAndDelete(id);
+  // Delete post and its comments/likes
+  await Promise.all([
+    Post.findByIdAndDelete(id),
+    Comment.deleteMany({ postId: id }),
+    Like.deleteMany({ postId: id }),
+  ]);
+
   return NextResponse.json({ success: true });
 }
 
@@ -37,10 +50,14 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { text } = await req.json();
+  if (!idParamSchema.safeParse(id).success) {
+    return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
+  }
 
-  if (!text || text.length > 280) {
-    return NextResponse.json({ error: "Text required (max 280 chars)" }, { status: 400 });
+  const body = await req.json();
+  const parsed = updatePostSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
   await connectDB();
@@ -53,7 +70,7 @@ export async function PUT(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  post.text = text;
+  post.text = parsed.data.text;
   await post.save();
   return NextResponse.json(post);
 }

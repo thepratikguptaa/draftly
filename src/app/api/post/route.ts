@@ -5,6 +5,8 @@ import { Post } from "@/models/Post";
 import { User } from "@/models/User";
 import { Comment } from "@/models/Comment";
 import { Like } from "@/models/Like";
+import { createPostSchema, searchQuerySchema, paginationSchema } from "@/lib/validations";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -12,11 +14,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { text, imageUrl } = await req.json();
-
-  if (!text || text.length > 280) {
-    return NextResponse.json({ error: "Text is required and must be under 280 characters" }, { status: 400 });
+  // Rate limit: 30 posts per 15 minutes
+  const rl = rateLimit(`post:${session.user.id}`, 30, 15 * 60 * 1000);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many posts. Slow down." }, { status: 429 });
   }
+
+  const body = await req.json();
+  const parsed = createPostSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  const { text, imageUrl } = parsed.data;
 
   await connectDB();
 
@@ -42,18 +52,25 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   const currentUserId = session?.user?.id;
 
-  const query = req.nextUrl.searchParams.get("q");
+  const rawQuery = req.nextUrl.searchParams.get("q") || undefined;
+  const query = searchQuerySchema.parse(rawQuery);
+
+  const pageParam = req.nextUrl.searchParams.get("page") || "1";
+  const limitParam = req.nextUrl.searchParams.get("limit") || "20";
+  const { page, limit } = paginationSchema.parse({ page: pageParam, limit: limitParam });
 
   await connectDB();
 
-  let filter = {};
+  const filter: Record<string, unknown> = {};
   if (query) {
-    filter = { text: { $regex: query, $options: "i" } };
+    filter.text = { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
   }
 
+  const total = await Post.countDocuments(filter);
   const posts = await Post.find(filter)
     .sort({ createdAt: -1 })
-    .limit(50)
+    .skip((page - 1) * limit)
+    .limit(limit)
     .lean();
 
   const userIds = [...new Set(posts.map((p) => p.userId.toString()))];
@@ -99,5 +116,13 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json(feed);
+  return NextResponse.json({
+    posts: feed,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 }
